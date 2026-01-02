@@ -188,5 +188,3 @@ Each page links back to the original source.
 Your use of this service must comply with Apple's Terms of Use and applicable law.
 You are solely responsible for how you access and use Apple's content through this tool.
 Do not use this service to circumvent technical measures or for redistribution.
-
-**Contact:** <info@sosumi.ai>
