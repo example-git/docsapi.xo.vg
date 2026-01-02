@@ -15,6 +15,7 @@ import {
 import { createMcpServer } from "./lib/mcp"
 import { fetchJSONData, renderFromJSON } from "./lib/reference"
 import { generateAppleDocUrl, isValidAppleDocUrl, normalizeDocumentationPath } from "./lib/url"
+import { fetchDocumentationMarkdown } from "./lib/docset"
 
 interface Env {
   ASSETS: Fetcher
@@ -212,6 +213,80 @@ app.get("/design/human-interface-guidelines/:path{.+}", async (c) => {
   }
 
   return c.text(markdown, 200, headers)
+})
+
+app.get("/api/*", async (c) => {
+  const rawPath = c.req.path.replace("/api/", "")
+  if (!rawPath) {
+    throw new HTTPException(400, { message: "Missing documentation URL" })
+  }
+
+  const requestUrl = new URL(c.req.url)
+  const decodedPath = decodeURIComponent(rawPath)
+  const withQuery =
+    requestUrl.search && !decodedPath.includes("?") ? `${decodedPath}${requestUrl.search}` : decodedPath
+  const normalizedInput = withQuery.startsWith("http") ? withQuery : `https://${withQuery}`
+  const targetUrl = encodeURI(normalizedInput)
+
+  const { markdown, url } = await fetchDocumentationMarkdown({ baseUrl: targetUrl })
+
+  if (!markdown || markdown.trim().length < 100) {
+    throw new HTTPException(502, {
+      message: "The documentation page loaded but contained insufficient content.",
+    })
+  }
+
+  const headers = {
+    "Content-Type": "text/markdown; charset=utf-8",
+    "Content-Location": url,
+    "Cache-Control": "public, max-age=3600, s-maxage=86400",
+    ETag: `"${Buffer.from(markdown).toString("base64").slice(0, 16)}"`,
+    "Last-Modified": new Date().toUTCString(),
+  }
+
+  if (c.req.header("Accept")?.includes("application/json")) {
+    return c.json(
+      {
+        url,
+        content: markdown,
+      },
+      200,
+      { ...headers, "Content-Type": "application/json; charset=utf-8" },
+    )
+  }
+
+  return c.text(markdown, 200, headers)
+})
+
+app.get("/api/search/*", async (c) => {
+  const rawPath = c.req.path.replace("/api/search/", "")
+  if (!rawPath) {
+    throw new HTTPException(400, { message: "Missing documentation URL" })
+  }
+
+  const query = c.req.query("q")?.trim() ?? ""
+  if (!query) {
+    throw new HTTPException(400, { message: "Missing search query" })
+  }
+
+  const requestUrl = new URL(c.req.url)
+  const decodedPath = decodeURIComponent(rawPath)
+  const withQuery =
+    requestUrl.search && !decodedPath.includes("?") ? `${decodedPath}${requestUrl.search}` : decodedPath
+  const normalizedInput = withQuery.startsWith("http") ? withQuery : `https://${withQuery}`
+  const targetUrl = encodeURI(normalizedInput)
+
+  const { searchDocumentation } = await import("./lib/docset/search")
+  const results = await searchDocumentation(targetUrl, query)
+
+  return c.json(
+    {
+      query,
+      results,
+    },
+    200,
+    { "Content-Type": "application/json; charset=utf-8" },
+  )
 })
 
 // Catch-all route for any other requests - returns 404

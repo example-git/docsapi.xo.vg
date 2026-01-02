@@ -1,16 +1,14 @@
-# sosumi.ai
+# docsapi
 
-Making Apple docs AI-readable.
+docsapi is a fork of [sosumi.ai](https://github.com/nshipster/sosumi.ai). It keeps the original Apple Docs rendering pipeline and adds a generic documentation API plus MCP tools for common docset generators.
 
-[sosumi.ai](https://sosumi.ai) 
-provides Apple Developer documentation in an AI-readable format 
-by converting JavaScript-rendered pages into Markdown.
+The hosted instance for this fork is `https://docsapi.xo.vg`.
 
 ## Usage
 
-### HTTP API
+### Apple Docs HTTP API
 
-Replace `developer.apple.com` with `sosumi.ai` 
+Replace `developer.apple.com` with `docsapi.xo.vg` 
 in any Apple Developer documentation URL:
 
 **Original:**
@@ -20,17 +18,28 @@ https://developer.apple.com/documentation/swift/array
 
 **AI-readable:**
 ```
-https://sosumi.ai/documentation/swift/array
+https://docsapi.xo.vg/documentation/swift/array
 ```
 
 This works for all API reference docs, 
 as well as Apple's [Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/) (HIG).
 
-### MCP Integration
+### Generic Docs API
 
-Sosumi's MCP server supports Streamable HTTP and Server-Sent Events (SSE) transport. 
+You can also fetch Markdown for any doc site by appending the raw URL to `/api/`:
+
+```
+https://docsapi.xo.vg/api/https://docs.rs/serde/latest/serde/
+```
+
+Set `Accept: application/json` to receive a JSON response with `{ url, content }`.
+Inputs ending in `.html` are normalized to the extension-less path.
+
+### MCP Integration (docsapi)
+
+docsapi's MCP server supports Streamable HTTP and Server-Sent Events (SSE) transport. 
 If your client supports either of these, 
-configure it to connect directly to `https://sosumi.ai/mcp`.
+configure it to connect directly to `https://docsapi.xo.vg/mcp`.
 
 Otherwise,
 you can run this command to proxy over stdio:
@@ -40,19 +49,19 @@ you can run this command to proxy over stdio:
   "mcpServers": {
     "sosumi": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://sosumi.ai/mcp"]
+      "args": ["-y", "mcp-remote", "https://docsapi.xo.vg/mcp"]
     }
   }
 }
 ```
 
-See [the website](https://sosumi.ai/#clients) for client-specific instructions.
+See `https://docsapi.xo.vg/#clients` for client-specific instructions.
 
 #### Available Resources
 
-- `doc://{path}` - Apple Developer documentation and Human Interface Guidelines in Markdown format
-  - Example: `doc://swift/array` returns Swift Array documentation
-  - Example: `doc://design/human-interface-guidelines/foundations/color` returns HIG Color guidelines
+- `doc://{url}` - Documentation at a full URL, rendered as Markdown
+  - Example: `doc://https://developer.apple.com/documentation/swift/array`
+  - Example: `doc://https://docs.rs/serde/latest/serde/`
 
 #### Available Tools
 
@@ -63,6 +72,16 @@ See [the website](https://sosumi.ai/#clients) for client-specific instructions.
 - `fetchAppleDocumentation` - Fetches Apple Developer documentation and Human Interface Guidelines by path
   - Parameters: `path` (string) - Documentation path (e.g., '/documentation/swift', 'swiftui/view', 'design/human-interface-guidelines/foundations/color')
   - Returns content as Markdown
+
+- `fetchDocumentation` - Fetches documentation from any base URL with docset auto-detection
+  - Parameters: `baseUrl` (string), `path` (string, optional), `docsetType` (string, optional)
+  - Example: `baseUrl: "https://docs.rs"`, `path: "/serde/latest/serde/"`
+  - Example: `baseUrl: "https://docs.python.org/3"`, `path: "/library/asyncio.html"`
+  - Returns content as Markdown, plus structured metadata (`docsetType`)
+
+- `searchDocumentation` - Basic search for common docset generators
+  - Parameters: `baseUrl` (string), `query` (string), `docsetType` (string, optional)
+  - Returns structured results with titles and URLs
 
 ### Chrome Extension
 
@@ -107,7 +126,7 @@ Once the application is up and running, press the <kbd>b</kbd>
 to open the URL in your browser.
 
 To configure MCP clients to use your development server, 
-replace `sosumi.ai` with the local server address
+replace `docsapi.xo.vg` with the local server address
 (`http://localhost:8787` by default).
 
 > [!NOTE]  

@@ -4,10 +4,10 @@
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sosumi-ai",
+  "name": "docsapi",
   "routes": [
     {
-      "pattern": "sosumi.ai",
+      "pattern": "docsapi.xo.vg",
       "custom_domain": true
     }
   ],
