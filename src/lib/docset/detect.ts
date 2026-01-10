@@ -32,11 +32,30 @@ export function detectDocsetType(html: string, url: string): DocsetType {
     return "docusaurus"
   }
 
-  if (generator.includes("mkdocs") || hasAny(html, ["md-content", "data-md-color-scheme"])) {
+  if (
+    generator.includes("mkdocs") ||
+    hasAny(html, [
+      "mkdocs-",
+      "data-md-component=",
+      "md-content",
+      "data-md-color-scheme",
+      "search/search_index.json",
+    ])
+  ) {
     return "mkdocs"
   }
 
-  if (generator.includes("sphinx") || hasAny(html, ["sphinxsidebar", "wy-nav-side"])) {
+  if (
+    generator.includes("sphinx") ||
+    hasAny(html, [
+      "sphinxsidebar",
+      "wy-nav-side",
+      "DOCUMENTATION_OPTIONS",
+      "documentation_options.js",
+      "searchtools.js",
+      "sphinx_rtd_theme",
+    ])
+  ) {
     return "sphinx"
   }
 
@@ -44,7 +63,7 @@ export function detectDocsetType(html: string, url: string): DocsetType {
     return "typedoc"
   }
 
-  if (generator.includes("jsdoc") || hasAny(html, ["jsdoc", "class=\"page\" id=\"main\""])) {
+  if (generator.includes("jsdoc") || hasAny(html, ["jsdoc", 'class="page" id="main"'])) {
     return "jsdoc"
   }
 
@@ -52,7 +71,11 @@ export function detectDocsetType(html: string, url: string): DocsetType {
     return "rustdoc"
   }
 
-  if (lowerUrl.includes("pkg.go.dev") || lowerUrl.includes("godoc.org") || hasAny(html, ["pkg-overview"])) {
+  if (
+    lowerUrl.includes("pkg.go.dev") ||
+    lowerUrl.includes("godoc.org") ||
+    hasAny(html, ["pkg-overview"])
+  ) {
     return "godoc"
   }
 

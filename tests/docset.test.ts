@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { fetchDocumentationMarkdown } from "../src/lib/docset"
 import { detectDocsetType } from "../src/lib/docset/detect"
 import { extractDocContent } from "../src/lib/docset/extract"
-import { fetchDocumentationMarkdown } from "../src/lib/docset"
 import { htmlToMarkdown } from "../src/lib/docset/markdown"
 import { searchDocumentation } from "../src/lib/docset/search"
 
@@ -22,6 +22,9 @@ describe("Docset Helpers", () => {
     expect(detectDocsetType('<meta name="generator" content="Sphinx" />', "https://x")).toBe(
       "sphinx",
     )
+    expect(
+      detectDocsetType('<script src="_static/documentation_options.js"></script>', "https://x"),
+    ).toBe("sphinx")
     expect(detectDocsetType('<meta name="generator" content="TypeDoc" />', "https://x")).toBe(
       "typedoc",
     )
@@ -32,9 +35,7 @@ describe("Docset Helpers", () => {
       "rustdoc",
     )
     expect(detectDocsetType("<html></html>", "https://pkg.go.dev/foo")).toBe("godoc")
-    expect(detectDocsetType('<meta name="generator" content="pdoc" />', "https://x")).toBe(
-      "pdoc",
-    )
+    expect(detectDocsetType('<meta name="generator" content="pdoc" />', "https://x")).toBe("pdoc")
     expect(detectDocsetType("<main>hello</main>", "https://x")).toBe("generic")
   })
 
@@ -150,6 +151,38 @@ describe("Docset Helpers", () => {
     )
   })
 
+  it("treats leading-slash paths as doc-root relative for versioned subpaths", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(
+        `
+          <html>
+            <head><title>Intro</title></head>
+            <body>
+              <main>
+                <article>
+                  <h1>Intro</h1>
+                  <p>Welcome.</p>
+                </article>
+              </main>
+            </body>
+          </html>
+        `,
+        { status: 200, headers: { "Content-Type": "text/html" } },
+      ),
+    )
+
+    const result = await fetchDocumentationMarkdown({
+      baseUrl: "https://docs.example.com/en/stable/",
+      path: "/guide/intro",
+    })
+
+    expect(result.url).toBe("https://docs.example.com/en/stable/guide/intro")
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://docs.example.com/en/stable/guide/intro",
+      expect.any(Object),
+    )
+  })
+
   it("strips hash fragments but preserves glossary.html", async () => {
     global.fetch = vi.fn().mockResolvedValue(
       new Response(
@@ -200,6 +233,60 @@ describe("Docset Helpers", () => {
     expect(results.length).toBe(1)
     expect(results[0].title).toBe("Install")
     expect(results[0].url).toBe("https://docs.example.com/install/")
+  })
+
+  it("searches mkdocs index under versioned subpaths", async () => {
+    const index = {
+      docs: [{ title: "Intro", text: "Welcome", location: "intro/" }],
+    }
+
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(index), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    await searchDocumentation(
+      "https://docs.example.com/en/stable/reference/foo/",
+      "intro",
+      "mkdocs",
+    )
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://docs.example.com/en/stable/search/search_index.json",
+      expect.any(Object),
+    )
+  })
+
+  it("searches sphinx indexes and derives the doc root from deep URLs", async () => {
+    const sphinxIndex = `Search.setIndex({"docnames":["intro","api"],"filenames":["intro.html","api.html"],"titles":["Intro","API Reference"],"terms":{"alpha":[0],"beta":[[1,2]]}});`
+
+    global.fetch = vi.fn().mockImplementation((url) => {
+      const urlString = String(url)
+      if (urlString.endsWith("searchindex.js")) {
+        return Promise.resolve(
+          new Response(sphinxIndex, {
+            status: 200,
+            headers: { "Content-Type": "application/javascript" },
+          }),
+        )
+      }
+      return Promise.resolve(new Response("Not found", { status: 404, statusText: "Not Found" }))
+    })
+
+    const results = await searchDocumentation(
+      "https://docs.example.com/en/stable/reference/foo/",
+      "alpha",
+      "sphinx",
+    )
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://docs.example.com/en/stable/searchindex.js",
+      expect.any(Object),
+    )
+    expect(results.length).toBe(1)
+    expect(results[0].url).toBe("https://docs.example.com/en/stable/intro.html")
   })
 
   it("falls back to sitemap.xml search", async () => {

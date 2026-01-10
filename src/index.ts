@@ -209,7 +209,7 @@ We encountered an unexpected issue while processing your request.
 2. **Check the URL** - Make sure you're using a valid documentation URL
 3. **Try a different page** - Some pages may have temporary issues
 
-If this issue persists, please report it to <info@sosumi.ai>.
+If this issue persists, please open an issue: https://github.com/example-git/docsapi/issues
 
 ---
 *[docsapi](https://docsapi.xo.vg) - Documentation for LLMs*`,

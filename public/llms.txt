@@ -189,4 +189,4 @@ Your use of this service must comply with Apple's Terms of Use and applicable la
 You are solely responsible for how you access and use Apple's content through this tool.
 Do not use this service to circumvent technical measures or for redistribution.
 
-**Contact:** <info@sosumi.ai>
+**Support:** https://github.com/example-git/docsapi/issues

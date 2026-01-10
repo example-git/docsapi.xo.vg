@@ -1,5 +1,10 @@
 import { fetchWithRateLimit, getRandomUserAgent } from "../fetch"
-import { fetchHIGPageData, fetchHIGTableOfContents, findHIGItemByPath, renderHIGFromJSON } from "../hig"
+import {
+  fetchHIGPageData,
+  fetchHIGTableOfContents,
+  findHIGItemByPath,
+  renderHIGFromJSON,
+} from "../hig"
 import { fetchJSONData, renderFromJSON } from "../reference"
 import { generateAppleDocUrl, normalizeDocumentationPath } from "../url"
 import { detectDocsetType } from "./detect"
@@ -46,7 +51,9 @@ function resolveTargetUrl(baseUrl: string, path?: string): string {
   }
 
   const baseForResolve = new URL(baseDir, parsedBase.origin)
-  return new URL(trimmedPath, baseForResolve).toString()
+  const resolvedPath =
+    trimmedPath.startsWith("/") && baseDir !== "/" ? trimmedPath.slice(1) : trimmedPath
+  return new URL(resolvedPath, baseForResolve).toString()
 }
 
 async function fetchHtml(url: string): Promise<string> {
@@ -97,7 +104,10 @@ export async function fetchDocumentationMarkdown(
                 .flatMap((item) => item.children ?? [])
                 .find((item) => item.path?.endsWith(`/${targetSlug}`))
             if (matched?.path) {
-              const normalizedPath = matched.path.replace(/^\/design\/human-interface-guidelines\//, "")
+              const normalizedPath = matched.path.replace(
+                /^\/design\/human-interface-guidelines\//,
+                "",
+              )
               genericFallbackUrl = `https://developer.apple.com${matched.path}`
               const jsonData = await fetchHIGPageData(normalizedPath)
               const markdown = await renderHIGFromJSON(jsonData, genericFallbackUrl)
@@ -145,7 +155,9 @@ export async function fetchDocumentationMarkdown(
     }
   }
 
-  const detected = forceGeneric ? "generic" : request.docsetType ?? detectDocsetType(html, fetchUrl)
+  const detected = forceGeneric
+    ? "generic"
+    : (request.docsetType ?? detectDocsetType(html, fetchUrl))
   const { title, contentHtml } = extractDocContent(html, detected)
 
   let markdown = htmlToMarkdown(contentHtml)
